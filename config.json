@@ -1,0 +1,17 @@
+{
+    "env": {
+        "_comment": "Don't run the server with debug enabled in production.",
+        "debug": true,
+        "logLevel": 1
+    },
+    "http": {
+        "port": 3001
+    },
+    "db": {
+        "host": "127.0.0.1",
+        "port": 3306,
+        "username": "vine",
+        "password": "vine",
+        "database_name": "vine"
+    }
+}
