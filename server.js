@@ -16,6 +16,16 @@ if(config.env.logLevel > 0){
   });
 }
 
+logger.log("[main]: Connecting to DB...");
+//Database
+try {
+  knex.raw('select 1+1 as result').then(function () {
+    logger.log("[main]: Connected!");
+  });
+} catch(e) {
+  throw `Failed to connect to database.\n${e}`;
+}
+
 logger.log("[server]: Creating all routes.")
 for (const route of routes) {
   if (typeof route.route !== "function" && typeof route.route.use !== "function") {
