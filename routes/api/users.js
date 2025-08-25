@@ -1,24 +1,98 @@
-// ./api/users.js
 const express = require("express");
 const route = express.Router();
 const knex = require("db");
 const htmlspecialchars = require("htmlspecialchars");
 const auth_sample = require('../../sampledata/auth.json');
-const json_success = require('../../sampledata/success.json');
+const utils = require("utils");
+const auth = require("auth");
 
 // [POST] Account Creation
 route.get("", (req, res) => {
-    res.send("creation");
+    res.send("/users");
 });
 
 // [POST] Login
-route.post("/authenticate", (req, res) => {
-    res.json(auth_sample);
+route.post("/authenticate", async (req, res) => {
+    const vine_client = req.headers["vine-client"] || "";
+    const { username, password } = req.body;
+
+    try {
+        const userRow = await knex("users")
+            .select("id", "username", "password", "avatar_url")
+            .where("email", username)
+            .first();
+        
+        if (!userRow) {
+            return utils.generateError(401, 101, "That username or password is incorrect.");
+        }
+
+        if (auth.verifyPassword(password, userRow.password)) {
+            let token;
+
+            const tokenRow = await knex("tokens")
+                .select("*")
+                .where("user_id", userRow.id)
+                .where("vine_client", vine_client)
+                .first();
+
+            if (tokenRow) {
+                token = tokenRow.token;
+            } else {
+                token = utils.generateToken();
+                await knex("tokens").insert({
+                    user_id: userRow.id,
+                    token: token,
+                    vine_client: vine_client
+                });
+            }
+
+            res.json({
+                code: "",
+                data: {
+                    username: userRow.username,
+                    userId: userRow.id,
+                    avatarUrl: userRow.avatar_url,
+                    key: token
+                },
+                success: true,
+                error: ""
+            });
+        } else {
+            return utils.generateError(401, 101, "That username or password is incorrect.");
+        }
+    } catch (err) {
+        return utils.generateError(500, 420, "Please try again later.");
+    }
 });
 
 // [DELETE] Log Out
-route.delete("/authenticate", (req, res) => {
-    res.json(json_success);
+route.delete("/authenticate", async (req, res) => {
+    const vine_session_id = req.headers["vine-session-id"];
+    const vine_client = req.headers["vine-client"] || "";
+
+    if (!vine_session_id) {
+        return utils.generateError(401, 103, "Authenticate first");
+    }
+
+    try {
+        const tokenRow = await knex("tokens")
+            .select("*")
+            .where("token", vine_session_id)
+            .first();
+
+        if (!tokenRow) {
+            return utils.generateError(401, 103, "Authenticate first");
+        }
+
+        await knex("tokens")
+            .where("token", vine_session_id)
+            .del();
+
+        return utils.generateSuccess();
+    } catch (err) {
+        console.error(err);
+        return utils.generateError(500, 420, "Please try again later.");
+    }
 });
 
 // [POST] Reset Password
@@ -33,13 +107,11 @@ route.get("/me", async (req, res) => {
     const vine_client = req.headers["vine-client"] || "";
 
     if (!vine_session_id) {
-        return res.status(401).json({
-            code: 103,
-            data: "",
-            success: false,
-            error: "no token"
-        });
+        utils.generateError(401, 103, "Authenticate first");
+        return;
     }
+
+    auth.validateToken(vine_client, vine_session_id);
 
     try {
         const tokenRow = await knex("tokens")
@@ -48,12 +120,8 @@ route.get("/me", async (req, res) => {
             .first();
 
         if (!tokenRow) {
-            return res.status(401).json({
-                code: 103,
-                data: "",
-                success: false,
-                error: "invalid token"
-            });
+            utils.generateError(401, 103, "Authenticate first");
+            return;
         }
 
         const userRow = await knex("users")
@@ -67,12 +135,8 @@ route.get("/me", async (req, res) => {
             .first();
 
         if (!userRow) {
-            return res.status(404).json({
-                code: 404,
-                data: "",
-                success: false,
-                error: "user not found"
-            });
+            utils.generateError(404, 900, "That record does not exist.");
+            return;
         }
 
         const [
@@ -145,11 +209,8 @@ route.get("/me", async (req, res) => {
         return res.json(responseData);
     } catch (err) {
         console.error(err);
-        return res.status(500).json({
-            code: 500,
-            success: false,
-            error: "server error"
-        });
+        utils.generateError(500, 420, "Please try again later.");
+        return;
     }
 });
 
@@ -161,12 +222,8 @@ route.get("/profiles/:user_id", async (req, res) => {
     const vine_client = req.headers["vine-client"] || "";
 
     if (!vine_session_id) {
-        return res.status(401).json({
-            code: 103,
-            data: "",
-            success: false,
-            error: "no token"
-        });
+        utils.generateError(401, 103, "Authenticate first");
+        return;
     }
 
     try {
@@ -182,12 +239,8 @@ route.get("/profiles/:user_id", async (req, res) => {
             .first();
 
         if (!userRow) {
-            return res.status(404).json({
-                code: 404,
-                data: "",
-                success: false,
-                error: "user not found"
-            });
+            utils.generateError(404, 900, "That record does not exist.");
+            return;
         }
 
         const [
@@ -260,11 +313,8 @@ route.get("/profiles/:user_id", async (req, res) => {
         return res.json(responseData);
     } catch (err) {
         console.error(err);
-        return res.status(500).json({
-            code: 500,
-            success: false,
-            error: "server error"
-        });
+        utils.generateError(500, 420, "Please try again later.");
+        return;
     }
 });
 

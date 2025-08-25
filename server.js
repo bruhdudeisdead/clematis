@@ -16,30 +16,32 @@ if(config.env.logLevel > 0){
   });
 }
 
-logger.log("[main]: Connecting to DB...");
+logger.log("[server]: Connecting to DB...");
 //Database
 try {
   knex.raw('select 1+1 as result').then(function () {
-    logger.log("[main]: Connected!");
+    logger.log("[server]: Connected!");
   });
 } catch(e) {
   throw `Failed to connect to database.\n${e}`;
 }
 
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
 logger.log("[server]: Creating all routes.")
 for (const route of routes) {
   if (typeof route.route !== "function" && typeof route.route.use !== "function") {
-    console.error(`[ERROR] Route for path ${route.path} is invalid:`, route.route);
+    logger.error(`[ERROR] Route for path ${route.path} is invalid:`, route.route);
     continue;
   }
-  console.log(`[DEBUG] Mounting route at ${route.path}`);
   app.use(route.path, route.route);
 }
 
 app.get("/", (req, res) => {
-  res.send('You aren\'t supposed to be here.');
+  res.send('clematis');
 });
 
 app.listen(config.http.port, async () => {
-  logger.log(`[server]: clematis API is listening on ${config.http.port}.`);
+  logger.log(`[server]: clematis is listening on ${config.http.port}.`);
 })

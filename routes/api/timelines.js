@@ -1,10 +1,9 @@
-// ./api/users.js
 const express = require("express");
 const router = express.Router();
 const empty_timeline = require('../../sampledata/timeline.json');
 
 router.get("/", (req, res) => {
-  res.send("Timelines route working!");
+  res.send("/timelines");
 });
 
 // Home Timeline
