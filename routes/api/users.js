@@ -23,7 +23,7 @@ route.post("/authenticate", async (req, res) => {
             .first();
         
         if (!userRow) {
-            return utils.generateError(401, 101, "That username or password is incorrect.");
+            return utils.generateError(res, 401, 101, "That username or password is incorrect.");
         }
 
         if (auth.verifyPassword(password, userRow.password)) {
@@ -58,10 +58,10 @@ route.post("/authenticate", async (req, res) => {
                 error: ""
             });
         } else {
-            return utils.generateError(401, 101, "That username or password is incorrect.");
+            return utils.generateError(res, 401, 101, "That username or password is incorrect.");
         }
     } catch (err) {
-        return utils.generateError(500, 420, "Please try again later.");
+        return utils.generateError(res, 500, 420, "Please try again later.");
     }
 });
 
@@ -71,7 +71,7 @@ route.delete("/authenticate", async (req, res) => {
     const vine_client = req.headers["vine-client"] || "";
 
     if (!vine_session_id) {
-        return utils.generateError(401, 103, "Authenticate first");
+        return utils.generateError(res, 401, 103, "Authenticate first");
     }
 
     try {
@@ -81,7 +81,7 @@ route.delete("/authenticate", async (req, res) => {
             .first();
 
         if (!tokenRow) {
-            return utils.generateError(401, 103, "Authenticate first");
+            return utils.generateError(res, 401, 103, "Authenticate first");
         }
 
         await knex("tokens")
@@ -91,7 +91,7 @@ route.delete("/authenticate", async (req, res) => {
         return utils.generateSuccess(res);
     } catch (err) {
         console.error(err);
-        return utils.generateError(500, 420, "Please try again later.");
+        return utils.generateError(res, 500, 420, "Please try again later.");
     }
 });
 
@@ -107,8 +107,7 @@ route.get("/me", async (req, res) => {
     const vine_client = req.headers["vine-client"] || "";
 
     if (!vine_session_id) {
-        utils.generateError(401, 103, "Authenticate first");
-        return;
+        return utils.generateError(res, 401, 103, "Authenticate first");
     }
 
     auth.validateToken(vine_client, vine_session_id);
@@ -120,8 +119,7 @@ route.get("/me", async (req, res) => {
             .first();
 
         if (!tokenRow) {
-            utils.generateError(401, 103, "Authenticate first");
-            return;
+            return utils.generateError(res, 401, 103, "Authenticate first");
         }
 
         const userRow = await knex("users")
@@ -135,8 +133,7 @@ route.get("/me", async (req, res) => {
             .first();
 
         if (!userRow) {
-            utils.generateError(404, 900, "That record does not exist.");
-            return;
+            return utils.generateError(res, 404, 900, "That record does not exist.");
         }
 
         const [
@@ -209,8 +206,7 @@ route.get("/me", async (req, res) => {
         return res.json(responseData);
     } catch (err) {
         console.error(err);
-        utils.generateError(500, 420, "Please try again later.");
-        return;
+        return utils.generateError(res, 500, 420, "Please try again later.");
     }
 });
 
@@ -222,8 +218,7 @@ route.get("/profiles/:user_id", async (req, res) => {
     const vine_client = req.headers["vine-client"] || "";
 
     if (!vine_session_id) {
-        utils.generateError(401, 103, "Authenticate first");
-        return;
+        return utils.generateError(res, 401, 103, "Authenticate first");
     }
 
     try {
@@ -239,8 +234,7 @@ route.get("/profiles/:user_id", async (req, res) => {
             .first();
 
         if (!userRow) {
-            utils.generateError(404, 900, "That record does not exist.");
-            return;
+            return utils.generateError(res, 404, 900, "That record does not exist.");
         }
 
         const [
@@ -313,8 +307,7 @@ route.get("/profiles/:user_id", async (req, res) => {
         return res.json(responseData);
     } catch (err) {
         console.error(err);
-        utils.generateError(500, 420, "Please try again later.");
-        return;
+        return utils.generateError(res, 500, 420, "Please try again later.");
     }
 });
 
