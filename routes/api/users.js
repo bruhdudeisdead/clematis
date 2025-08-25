@@ -88,7 +88,7 @@ route.delete("/authenticate", async (req, res) => {
             .where("token", vine_session_id)
             .del();
 
-        return utils.generateSuccess();
+        return utils.generateSuccess(res);
     } catch (err) {
         console.error(err);
         return utils.generateError(500, 420, "Please try again later.");

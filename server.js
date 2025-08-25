@@ -18,13 +18,14 @@ if(config.env.logLevel > 0){
 
 logger.log("[server]: Connecting to DB...");
 //Database
-try {
-  knex.raw('select 1+1 as result').then(function () {
-    logger.log("[server]: Connected!");
-  });
-} catch(e) {
-  throw `Failed to connect to database.\n${e}`;
-}
+(async () => {
+    try {
+        await knex.raw('select 1+1 as result');
+        logger.log("[server]: Connected!");
+    } catch (err) {
+        console.error("[server]: Connection failed", err);
+    }
+})();
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
