@@ -13,5 +13,9 @@
         "username": "clematis",
         "password": "password",
         "database_name": "clematis"
+    },
+    "urls": {
+        "cdnUrl": "https://cdn.example.com/",
+        "postShareUrl": "https://example.com/v/"
     }
 }
