@@ -23,17 +23,20 @@ logger.log("[server]: Connecting to DB...");
         await knex.raw('select 1+1 as result');
         logger.log("[server]: Connected!");
     } catch (err) {
-        console.error("[server]: Connection failed", err);
+        logger.error("[server]: Connection failed", err);
     }
 })();
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+if(config.storage.driver == "local") {
+  app.use("/uploads", express.static(config.storage.local.uploadsDir));
+}
 
 logger.log("[server]: Creating all routes.")
 for (const route of routes) {
   if (typeof route.route !== "function" && typeof route.route.use !== "function") {
-    logger.error(`[ERROR] Route for path ${route.path} is invalid:`, route.route);
+    logger.error(`[server] Route for path ${route.path} is invalid:`, route.route);
     continue;
   }
   app.use(route.path, route.route);

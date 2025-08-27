@@ -12,10 +12,25 @@
         "port": 3306,
         "username": "clematis",
         "password": "password",
-        "database_name": "clematis"
+        "databaseName": "clematis"
     },
     "urls": {
-        "cdnUrl": "https://cdn.example.com/",
+        "baseUrl": "https://example.com/",
         "postShareUrl": "https://example.com/v/"
+    },
+    "storage": {
+        "driver": "local",
+        "local": {
+            "uploadsDir": "./dynamic"
+        },
+        "s3": {
+            "bucket": "",
+            "region": "auto",
+            "accessKeyId": "",
+            "secretAccessKey": "",
+            "endpoint": "",
+            "forcePathStyle": true,
+            "baseUrl": ""
+        }
     }
 }
