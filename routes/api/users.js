@@ -177,7 +177,7 @@ route.get("/me", async (req, res) => {
 
         const userRow = await knex("users")
             .select(
-                "id", "username", "avatar_url", "bio", "background_color",
+                "id", "username", "avatar_url", "bio", "profile_color",
                 "location", "email", "verified", "is_explicit", "edition", "disable_address_book",
                 "accepts_out_of_network_conversations", "upload_hd_videos", "twitter_oauth_token",
                 "twitter_hidden", "is_private"
@@ -242,7 +242,7 @@ route.get("/me", async (req, res) => {
                 uploadHD: userRow.upload_hd_videos,
                 postCount: parseInt(postCount.count),
                 privateAccount: userRow.is_private,
-                profileBackground: userRow.background_color,
+                profileBackground: userRow.profile_color,
                 repostsEnabled: 1,
                 secondaryColor: "0x000000",
                 key: htmlspecialchars(vine_session_id),
@@ -314,7 +314,7 @@ route.put("/:user_id", async (req, res) => {
 
         const userRow = await knex("users")
         .select(
-            "id", "username", "avatar_url", "bio", "background_color",
+            "id", "username", "avatar_url", "bio", "profile_color",
             "location", "email", "verified", "is_explicit", "edition", "disable_address_book",
             "accepts_out_of_network_conversations", "upload_hd_videos", "twitter_oauth_token",
             "twitter_hidden", "is_private"
@@ -376,7 +376,7 @@ route.put("/:user_id", async (req, res) => {
                 uploadHD: userRow.upload_hd_videos,
                 postCount: parseInt(postCount.count),
                 privateAccount: userRow.is_private,
-                profileBackground: userRow.background_color,
+                profileBackground: userRow.profile_color,
                 repostsEnabled: 1,
                 secondaryColor: "0x000000",
                 key: htmlspecialchars(tokenRow.token),
@@ -397,6 +397,33 @@ route.put("/:user_id", async (req, res) => {
     }
 });
 
+// [POST] Set Profile Color
+route.post("/:user_id/preferences/profileBackground", async (req, res) => {
+    const tokenRow = req.user;
+    const allowedColors = ["0x333333", "0xff5967", "0xff794d", "0xffaf40", "0x68bf60", "0x33ccbf", "0x6db0f2", "0x5082e5", "0x7870cc", "0xf279ac"];
+
+    if (!tokenRow) {
+        return utils.generateError(res, 401, 103, "Authenticate first");
+    }
+
+    if (!allowedColors.includes(req.body.color)) {
+        return utils.generateError(res, 400, 420, "Invalid profile color.");
+    }
+
+    try {
+        await knex("users")
+            .where({ id: tokenRow.user_id })
+            .update({
+                profile_color: req.body.color
+            });
+
+        return utils.generateSuccess(res);
+    } catch (err) {
+        logger.error(err);
+        return utils.generateError(res, 500, 420, "Please try again later.");
+    }
+});
+
 // [GET] User Profile
 route.get("/profiles/:user_id", async (req, res) => {
     const vine_client = req.headers["x-vine-client"] || "";
@@ -410,7 +437,7 @@ route.get("/profiles/:user_id", async (req, res) => {
 
         const userRow = await knex("users")
             .select(
-                "id", "username", "avatar_url", "bio", "background_color",
+                "id", "username", "avatar_url", "bio", "profile_color",
                 "location", "email", "verified", "is_explicit", "edition", "disable_address_book",
                 "accepts_out_of_network_conversations", "upload_hd_videos", "twitter_oauth_token",
                 "twitter_hidden", "is_private"
@@ -477,7 +504,7 @@ route.get("/profiles/:user_id", async (req, res) => {
                 uploadHD: userRow.upload_hd_videos,
                 postCount: parseInt(postCount.count),
                 privateAccount: userRow.is_private,
-                profileBackground: userRow.background_color,
+                profileBackground: userRow.profile_color,
                 repostsEnabled: 1,
                 secondaryColor: "0x000000",
                 userId: userRow.id,

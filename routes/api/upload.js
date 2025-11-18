@@ -18,6 +18,7 @@ route.use((req, res, next) => {
     auth.validateToken(vine_client, vine_session_id, req, res, next);
 });
 
+// [PUT] Upload Video
 route.put("/videos/:filename", express.raw({ type: "video/*", limit: "8mb" }), async (req, res) => {
     try {
         const tokenRow = req.user;
@@ -46,6 +47,7 @@ route.put("/videos/:filename", express.raw({ type: "video/*", limit: "8mb" }), a
     }
 });
 
+// [PUT] Upload Thumbnail
 route.put("/thumbs/:filename", express.raw({ type: "image/*", limit: "2mb" }), (req, res) => {
     const tokenRow = req.user;
 
@@ -58,6 +60,7 @@ route.put("/thumbs/:filename", express.raw({ type: "image/*", limit: "2mb" }), (
     return utils.generateSuccess(res);
 });
 
+// [PUT] Upload Avatar
 route.put("/avatars/:filename", express.raw({ type: "image/*", limit: "2mb" }), async (req, res) => {
     try {
         const tokenRow = req.user;

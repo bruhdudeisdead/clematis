@@ -25,6 +25,7 @@
     "file-type": "^21.0.0",
     "fs": "^0.0.1-security",
     "htmlspecialchars": "^1.0.5",
+    "json-bigint": "^1.0.0",
     "knex": "^3.1.0",
     "luxon": "^3.7.1",
     "module-alias": "^2.2.3",
