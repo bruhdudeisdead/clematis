@@ -262,7 +262,7 @@ route.get("/sectioned", async (req, res) => {
               permalinkUrl: config.urls.postShareUrl + BigInt(postRow.id),
               username: urow.username,
               description: postRow.description,
-              postId: BigInt(row.id),
+              postId: BigInt(postRow.id),
               videoUrl: postRow.video_url,
               created: formattedCreatedAt,
               shareUrl: config.urls.postShareUrl + BigInt(postRow.id),
