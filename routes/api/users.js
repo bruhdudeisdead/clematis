@@ -5,6 +5,8 @@ const htmlspecialchars = require("htmlspecialchars");
 const utils = require("utils");
 const logger = require("logger");
 const auth = require("auth");
+const { DateTime } = require('luxon');
+const JSONbig = require("json-bigint")({ useNativeBigInt: true });
 const authExcludedPaths = ["/authenticate", "/"];
 
 route.use((req, res, next) => {
@@ -424,6 +426,186 @@ route.post("/:user_id/preferences/profileBackground", async (req, res) => {
     }
 });
 
+// [GET] Unread Notification Count
+route.get("/:user_id/pendingNotificationsCount", async (req, res) => {
+    res.setHeader("Content-Type", "application/json");
+    const vine_session_id = req.headers["vine-session-id"];
+    const vine_client = req.headers["x-vine-client"] || "";
+
+    if (!vine_session_id) {
+        return utils.generateError(res, 401, 103, "Authenticate first");
+    }
+
+    const response = {
+        code: "",
+        data: 0,
+        success: true,
+        error: ""
+    };
+
+    try {
+        const tokenRow = req.user;
+
+        if (!tokenRow) {
+            return utils.generateError(res, 401, 103, "Authenticate first");
+        }
+
+        const [{count}] = await knex("activity")
+            .where({
+                target_user: tokenRow.user_id,
+                is_read: 0
+            })
+            .count("* as count");
+
+        response.data = Number(count);
+
+        res.end(JSON.stringify(response));
+    } catch (err) {
+        logger.error(err);
+        return utils.generateError(res, 500, 420, "Please try again later.");
+    }
+});
+
+// [GET] Notifications
+route.get("/:user_id/notifications", async (req, res) => {
+    res.setHeader("Content-Type", "application/json");
+    const vine_session_id = req.headers["vine-session-id"];
+    const vine_client = req.headers["x-vine-client"] || "";
+
+    if (!vine_session_id) {
+        return utils.generateError(res, 401, 103, "Authenticate first");
+    }
+
+    const page = req.query.page ? Number(req.query.page) : 1;
+    const perPage = 15;
+    const offset = (page - 1) * perPage;
+
+    const response = {
+        code: "",
+        data: {
+            count: 0,
+            records: [],
+            previousPage: !req.query.page ? 1 : Number(req.query.page) - 1,
+            backAnchor: -1,
+            anchor: 0,
+            nextPage: !req.query.page ? 2 : Number(req.query.page) + 1,
+        },
+        size: 0,
+        success: true,
+        error: ""
+    };
+
+    try {
+        const tokenRow = req.user;
+
+        if (!tokenRow) {
+            return utils.generateError(res, 401, 103, "Authenticate first");
+        }
+
+        const rows = await knex("activity")
+            .select(
+                "*"
+            )
+            .where("target_user", tokenRow.user_id)
+            .orderBy("created_at", "desc")
+            .limit(perPage)
+            .offset(offset);
+
+        response.data.count = rows.length;
+        response.size = rows.length;
+
+        for (const row of rows) {
+            const urow = await knex("users")
+                .select(
+                    "id",
+                    "username",
+                    "avatar_url",
+                    "verified",
+                    "bio",
+                    "is_explicit",
+                    "location",
+                    "profile_color",
+                    knex.raw(
+                    "(SELECT COUNT(*) FROM follows WHERE follow_from = ? AND follow_to = users.id) AS following",
+                    [tokenRow.user_id]
+                    )
+                )
+                .where("id", row.source_user)
+                .first();
+
+            const createdAt = DateTime.fromJSDate(row.created_at, { zone: 'utc' });
+            const formattedCreatedAt = createdAt.toFormat("yyyy-MM-dd'T'HH:mm:ss.SSS");
+
+            let body = "";
+            switch (row.type_id) {
+                case 1:
+                    body = `<: user | vine://user-id/${urow.id} :>${urow.username}<:> is now following you!`;
+                    break;
+                case 2:
+                    body = `<: user | vine://user-id/${urow.id} :>${urow.username}<:> liked your post`;
+                    break;
+                case 3:
+                    body = `<: user | vine://user-id/${urow.id} :>${urow.username}<:> commented on your post`;
+                    break;
+                case 4:
+                    body = `<: user | vine://user-id/${urow.id} :>${urow.username}<:> reposted your post`;
+                    break;
+                case 5:
+                    body = `<: user | vine://user-id/${urow.id} :>${urow.username}<:> is now following you!`;
+                    break;
+                case 6:
+                    body = `A moderation action was taken against your account.`;
+                    break;
+                case 7:
+                    body = `<: user | vine://user-id/${urow.id} :>${urow.username}<:> mentioned you in a post`;
+                    break;
+                case 8:
+                    body = `<: user | vine://user-id/${urow.id} :>${urow.username}<:> mentioned you in the comments of a post`;
+                    break;
+            }
+
+            let postId = null;
+            let thumbnailUrl = null;
+            if (row.post_id) {
+                const post = await knex("videos")
+                    .select("thumbnail_url")
+                    .where("id", BigInt(row.post_id))
+                    .first();
+                
+                if(post) {
+                    postId = BigInt(row.post_id)
+                    thumbnailUrl = post.thumbnail_url
+                }
+            }
+
+            const notification = {
+                body: body,
+                userId: urow.id,
+                postId: postId,
+                thumbnailUrl: thumbnailUrl,
+                username: urow.username,
+                avatarUrl: urow.avatar_url,
+                notificationTypeId: row.type_id,
+                created: formattedCreatedAt
+            };
+
+            response.data.records.push(notification);
+        }
+
+        await knex("activity")
+            .where("is_read", 0)
+            .where("target_user", tokenRow.user_id)
+            .update({
+                is_read: 1,
+            });
+
+        res.end(JSONbig.stringify(response));
+    } catch (err) {
+        logger.error(err);
+        return utils.generateError(res, 500, 420, "Please try again later.");
+    }
+});
+
 // [GET] User Profile
 route.get("/profiles/:user_id", async (req, res) => {
     const vine_client = req.headers["x-vine-client"] || "";
@@ -694,11 +876,15 @@ route.post("/:user_id/followers", async (req, res) => {
             return utils.generateError(res, 401, 103, "Authenticate first");
         }
 
+        if(tokenRow.user_id === userId) {
+            return utils.generateError(res, 400, 105, "You can't follow yourself");
+        }
+
         const isFollowing = await knex("follows")
-        .select("id")
-        .where("follow_from", tokenRow.user_id)
-        .where("follow_to", userId)
-        .first();
+            .select("id")
+            .where("follow_from", tokenRow.user_id)
+            .where("follow_to", userId)
+            .first();
         
         if(isFollowing) {
             return utils.generateSuccess(res);
@@ -707,6 +893,27 @@ route.post("/:user_id/followers", async (req, res) => {
                 follow_from: tokenRow.user_id,
                 follow_to: userId
             })
+
+            const alreadyNotified = await knex("activity")
+                .select("id")
+                .where("source_user", tokenRow.user_id)
+                .where("target_user", userId)
+                .where("type_id", 1)
+                .first();
+                
+            if(alreadyNotified) {
+                await knex("activity")
+                    .where("source_user", tokenRow.user_id)
+                    .where("target_user", userId)
+                    .where("type_id", 1)
+                    .del();
+            }
+
+            await knex("activity").insert({
+                source_user: tokenRow.user_id,
+                target_user: userId,
+                type_id: 1,
+            });
 
             return utils.generateSuccess(res);
         }

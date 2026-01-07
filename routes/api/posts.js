@@ -246,7 +246,7 @@ route.post("/:id/likes", async (req, res) => {
     }
 
     const post = await knex("videos")
-      .select("id")
+      .select("id", "user_id")
       .where("id", postId)
       .first();
 
@@ -267,7 +267,33 @@ route.post("/:id/likes", async (req, res) => {
     await knex("likes").insert({
       user_id: tokenRow.user_id,
       video_id: postId
-    })
+    });
+
+    if(tokenRow.user_id != post.user_id) {
+      const alreadyNotified = await knex("activity")
+        .select("id")
+        .where("source_user", tokenRow.user_id)
+        .where("target_user", post.user_id)
+        .where("type_id", 2)
+        .where("post_id", postId)
+        .first();
+
+      if(alreadyNotified) {
+        await knex("activity")
+          .where("source_user", tokenRow.user_id)
+          .where("target_user", post.user_id)
+          .where("type_id", 2)
+          .where("post_id", postId)
+          .del();
+      }
+
+      await knex("activity").insert({
+        source_user: tokenRow.user_id,
+        target_user: post.user_id,
+        type_id: 2,
+        post_id: postId
+      });
+    }
 
     return utils.generateSuccess(res);
   } catch (err) {
